@@ -1,0 +1,162 @@
+---
+title: "repdata2"
+author: "Kent Mok"
+date: "August 19, 2015"
+output: html_document
+---
+
+# Weather Events in the United States
+
+## Synopsis
+This analysis reviews storm data provided by the U. S. National Oceanic and 
+Atmospheric Administration's (NOAA) storm database. The database tracks 
+characteristics of major storms and weather events in the United States, 
+including when and where they occur, as well as estimates of any fatalities, 
+injuries, and property damage. Using the data, this analysis determines which
+type of events are the most harmful to people by looking at fatalities and 
+injuries related to the events. In addition, the analysis determines which type
+of events have the greatest economic consequences.
+
+## Data Processing
+```{r}
+# Load data
+rawdata <- read.csv("repdata-data-StormData.csv")
+```
+
+The data is quite messy as can be seen by looking at unique values of EVTYPE in
+the data. The data needs to be cleaned to match the standard Storm Data Event
+values set forth by the NWS.
+```{r}
+levels(rawdata$EVTYPE)
+```
+
+The below code is used to clean the data based on event types.
+```{r}
+# Clean data
+rawdata$EVTYPE[grep("HIGH SURF", rawdata$EVTYPE)] <- "HIGH SURF"
+rawdata$EVTYPE[grep("HEAVY SURF", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "HEAVY SURF"
+rawdata$EVTYPE[grep("RIP CURRENT", rawdata$EVTYPE)] <- "RIP CURRENT"
+# "Burst" included under Thunderstorm Wind per 7.39.1 of NWSI 10-1605
+tstormmatch <- c("THUNDERSTORM WIND", "THUNDERSTORMS WIND",
+                 "THUDERSTORM WINDS", "THUNDEERSTORM WINDS",
+                 "THUNDERESTORM WINDS", "THUNDERSTORM  WINDS",
+                 "THUNDERSTORM W INDS", "THUNDERSTORM WINS",
+                 "THUNDERSTORMW WINDS", "THUNDERSTORMWINDS",
+                 "THUNDERSTROM WIND", "THUNDERSTROM WINDS",
+                 "THUNDERTORM WINDS", "THUNDERTSORM WIND",
+                 "THUNDESTORM WINDS", "THUNERSTORM WINDS", "BURST",
+                 "TUNDERSTORM WIND")
+rawdata$EVTYPE[grep(paste(tstormmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "THUNDERSTORM WIND"
+rawdata$EVTYPE[grep("^FLASH", rawdata$EVTYPE)] <- "FLASH FLOOD"
+rawdata$EVTYPE[grep("^FLOOD", rawdata$EVTYPE)] <- "FLOOD"
+rawdata$EVTYPE[grep("WILD", rawdata$EVTYPE)] <- "WILDFIRE"
+lightningmatch <- c("^LIGHTNING", "^ LIGHTNING")
+rawdata$EVTYPE[grep(paste(lightningmatch, collapse = "|"), rawdata$EVTYPE)] <-
+    "LIGHTNING"
+rawdata$EVTYPE[grep("^HAIL", rawdata$EVTYPE)] <- "HAIL"
+dustdevilmatch <- c("DUST DEVIL", "DUST DEVEL")
+rawdata$EVTYPE[grep(paste(dustdevilmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "DUST DEVIL"
+rawdata$EVTYPE[grep("VOLCANIC", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "VOLCANIC ASH"
+rawdata$EVTYPE[grep("^HEAVY SNOW", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "HEAVY SNOW"
+rawdata$EVTYPE[grep("HURRICANE", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "HURRICANE/TYPHOON"
+waterspoutmatch <- c("^WATERSPOUT", "^ WATERSPOUT", "WAYTERSPOUT",
+                     "WATER SPOUT", "LANDSPOUT")
+rawdata$EVTYPE[grep(paste(waterspoutmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "WATERSPOUT"
+densefogmatch <- c("DENSEFOG", "^FOG")
+rawdata$EVTYPE[grep(paste(densefogmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "DENSE FOG"
+freezefogmatch <- c("FREEZING FOG", "ICE FOG")
+rawdata$EVTYPE[grep(paste(freezefogmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "FREEZING FOG"
+heavyrainmatch <- c("^HEAVY RAIN", "LOCALLY HEAVY RAIN", "TSTM HEAVY RAIN")
+rawdata$EVTYPE[grep(paste(heavyrainmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "HEAVY RAIN"
+# "Freezing drizzle" included under Winter Weather per 7.48 of NWSI 10-1605
+# Also assuming that "Wintry" falls under this category
+wintweatmatch <- c("WINTER WEATHER", "FREEZING DRIZZLE", "WINTERY", "WINTRY",
+                   "WINTER MIX")
+rawdata$EVTYPE[grep(paste(wintweatmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "WINTER WEATHER"
+rawdata$EVTYPE[grep("TROPICAL STORM", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "TROPICAL STORM"
+# "Freezing rain" included under Winter Storm per 7.47 of NWSI 10-1605
+# "Light snow" included under Winter Storm per 7.47 of NWSI 10-1605
+wstormmatch <- c("^WINTER STORM", "^FREEZING RAIN", "LIGHT SNOW")
+rawdata$EVTYPE[grep(paste(wstormmatch, collapse = "|"), rawdata$EVTYPE, 
+    ignore.case = TRUE)] <- "WINTER STORM"
+rawdata$EVTYPE[grep("^STRONG WIND", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "STRONG WIND"
+# Since "High Winds" accompany blizzards, any event type with high wind and
+# blizzard in it will be resolved to just "Blizzard"
+rawdata$EVTYPE[grep("BLIZZARD", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "BLIZZARD"
+# Any event type with "Drought" resolved to just "Drought"
+rawdata$EVTYPE[grep("DROUGHT", rawdata$EVTYPE, ignore.case = TRUE)] <- 
+    "DROUGHT"
+excheatmatch <- c("EXCESSIVE HEAT", "EXTREME HEAT", "HEAT WAVE", "RECORD HEAT")
+rawdata$EVTYPE[grep(paste(excheatmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "EXCESSIVE HEAT"
+# "Unseasonably warm" included under Heat per 7.47 of NWSI 10-1605
+heatmatch <- c("UNSEASONABLY WARM", "UNSEASONABLY HOT", "HEAT", "VERY WARM",
+               "HOT", "RECORD WARM")
+rawdata$EVTYPE[grep(paste(heatmatch, collapse = "|"), rawdata$EVTYPE, 
+    ignore.case = TRUE)] <- "HEAT"
+extcoldmatch <- c("RECORD COLD", "RECORD  COLD", "WIND CHILL")
+rawdata$EVTYPE[grep(paste(extcoldmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "EXTREME COLD/WIND CHILL"
+# "Urban flooding" included under Flood per 7.14.4 of NWSI 10-1605
+floodmatch <- c("URBAN", "STREAM")
+rawdata$EVTYPE[grep(paste(floodmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "FLOOD"
+coastalmatch <- c("COASTAL FLOOD")
+rawdata$EVTYPE[grep(paste(coastalmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "COASTAL FLOOD"
+
+rawdata$EVTYPE <- droplevels(rawdata$EVTYPE)
+```
+
+After cleaning, the unique values of event type looks as follows:
+```{r}
+levels(rawdata$EVTYPE)
+```
+
+
+## Results
+```{r}
+# Split the total fatalities data by the event type.
+fatalities <- aggregate(rawdata$FATALITIES, list(rawdata$EVTYPE), FUN = sum)
+colnames(fatalities) <- c("EVTYPE", "FATALITIES")
+# Extract data where fatalities are greater than zero.
+nonzerofatals <- fatalities[fatalities$FATALITIES != 0,]
+# Create a barplot of the extracted fatalities data.
+plotfatal <- barplot(nonzerofatals$FATALITIES, main = "Weather Related 
+                     Fatalities in US", xlab = "Event Type", ylab = "Total 
+                     Fatalities", names.arg = nonzerofatals$EVTYPE, 
+                     cex.names = 0.5)
+```
+  
+The plot above shows that the weather event with the most fatalities are 
+tornadoes.  
+```{r}
+# Split the total injuries data by the event type.
+injuries <- aggregate(rawdata$INJURIES, list(rawdata$EVTYPE), FUN = sum)
+colnames(injuries) <- c("EVTYPE", "INJURIES")
+# Extract data where fatalities are greater than zero.
+nonzeroinjurs <- injuries[injuries$INJURIES != 0,]
+# Create a barplot of the extracted fatalities data.
+plotinjur <- barplot(nonzeroinjurs$INJURIES, main = "Weather Related 
+                     Injuries in US", xlab = "Event Type", ylab = "Total 
+                     Injuries", names.arg = nonzeroinjurs$EVTYPE, 
+                     cex.names = 0.5)
+
+```
+  
+The plot above shows that the weather event with the most injuries are 
+floods.  
