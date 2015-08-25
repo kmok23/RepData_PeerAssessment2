@@ -38,6 +38,8 @@ rawdata$EVTYPE[grep("HEAVY SURF", rawdata$EVTYPE, ignore.case = TRUE)] <-
     "HEAVY SURF"
 rawdata$EVTYPE[grep("RIP CURRENT", rawdata$EVTYPE)] <- "RIP CURRENT"
 # "Burst" included under Thunderstorm Wind per 7.39.1 of NWSI 10-1605
+# According to the remarks column, all EVTYPE's beginning with SUMMARY were
+# related to thunderstorms.
 tstormmatch <- c("THUNDERSTORM WIND", "THUNDERSTORMS WIND",
                  "THUDERSTORM WINDS", "THUNDEERSTORM WINDS",
                  "THUNDERESTORM WINDS", "THUNDERSTORM  WINDS",
@@ -46,7 +48,7 @@ tstormmatch <- c("THUNDERSTORM WIND", "THUNDERSTORMS WIND",
                  "THUNDERSTROM WIND", "THUNDERSTROM WINDS",
                  "THUNDERTORM WINDS", "THUNDERTSORM WIND",
                  "THUNDESTORM WINDS", "THUNERSTORM WINDS", "BURST",
-                 "TUNDERSTORM WIND")
+                 "TUNDERSTORM WIND", "^Summary", "^TSTM", "^ TSTM")
 rawdata$EVTYPE[grep(paste(tstormmatch, collapse = "|"), rawdata$EVTYPE,
     ignore.case = TRUE)] <- "THUNDERSTORM WIND"
 rawdata$EVTYPE[grep("^FLASH", rawdata$EVTYPE)] <- "FLASH FLOOD"
@@ -160,3 +162,35 @@ plotinjur <- barplot(nonzeroinjurs$INJURIES, main = "Weather Related
   
 The plot above shows that the weather event with the most injuries are 
 floods.  
+
+```{r}
+# Copy property damage to a new total damage column
+rawdata$TOTALDMG <- rawdata$PROPDMG
+
+# Apply multipliers for the property damage
+rawdata$TOTALDMG[rawdata$PROPDMGEXP == "H"] <- rawdata$TOTALDMG[rawdata$PROPDMGEXP == "H"] * 100
+rawdata$TOTALDMG[rawdata$PROPDMGEXP == "K"] <- rawdata$TOTALDMG[rawdata$PROPDMGEXP == "K"] * 1000
+rawdata$TOTALDMG[rawdata$PROPDMGEXP == "M"] <- rawdata$TOTALDMG[rawdata$PROPDMGEXP == "M"] * 1000000
+
+# Add crop damage with multipliers to the total damage
+rawdata$TOTALDMG[rawdata$CROPDMGEXP == "H"] <- rawdata$TOTALDMG[rawdata$CROPDMGEXP == "H"] + 
+    rawdata$CROPDMG[rawdata$CROPDMGEXP == "H"] * 100
+rawdata$TOTALDMG[rawdata$CROPDMGEXP == "K"] <- rawdata$TOTALDMG[rawdata$CROPDMGEXP == "K"] + 
+    rawdata$CROPDMG[rawdata$CROPDMGEXP == "K"] * 1000
+rawdata$TOTALDMG[rawdata$CROPDMGEXP == "M"] <- rawdata$TOTALDMG[rawdata$CROPDMGEXP == "M"] + 
+    rawdata$CROPDMG[rawdata$CROPDMGEXP == "M"] * 1000000
+
+# Split the total damage cost data by the event type.
+totaldamage <- aggregate(rawdata$TOTALDMG, list(rawdata$EVTYPE), FUN = sum)
+colnames(totaldamage) <- c("EVTYPE", "TOTALDMG")
+# Extract data where damage cost is greater than zero.
+nonzerodamag <- totaldamage[totaldamage$TOTALDMG != 0,]
+# Create a barplot of the extracted damage cost data.
+plotdamag <- barplot(nonzerodamag$TOTALDMG, main = "Weather Related 
+                     Damage in US", xlab = "Event Type", ylab = "Total 
+                     Cost of Damage", names.arg = nonzerodamag$EVTYPE, 
+                     cex.names = 0.5)
+```
+  
+The plot above shows that the weather event with the greatest total damage cost
+is tornadoes.
