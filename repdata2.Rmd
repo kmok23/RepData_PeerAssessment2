@@ -54,7 +54,7 @@ rawdata$EVTYPE[grep(paste(tstormmatch, collapse = "|"), rawdata$EVTYPE,
 rawdata$EVTYPE[grep("^FLASH", rawdata$EVTYPE)] <- "FLASH FLOOD"
 rawdata$EVTYPE[grep("^FLOOD", rawdata$EVTYPE)] <- "FLOOD"
 rawdata$EVTYPE[grep("WILD", rawdata$EVTYPE)] <- "WILDFIRE"
-lightningmatch <- c("^LIGHTNING", "^ LIGHTNING")
+lightningmatch <- c("^LIGHTNING", "^ LIGHTNING", "RED FLAG CRITERIA")
 rawdata$EVTYPE[grep(paste(lightningmatch, collapse = "|"), rawdata$EVTYPE)] <-
     "LIGHTNING"
 rawdata$EVTYPE[grep("^HAIL", rawdata$EVTYPE)] <- "HAIL"
@@ -117,9 +117,18 @@ rawdata$EVTYPE[grep(paste(extcoldmatch, collapse = "|"), rawdata$EVTYPE,
 floodmatch <- c("URBAN", "STREAM")
 rawdata$EVTYPE[grep(paste(floodmatch, collapse = "|"), rawdata$EVTYPE,
     ignore.case = TRUE)] <- "FLOOD"
-coastalmatch <- c("COASTAL FLOOD")
+coastalmatch <- c("COASTAL FLOOD", "COASTALFLOOD")
 rawdata$EVTYPE[grep(paste(coastalmatch, collapse = "|"), rawdata$EVTYPE,
     ignore.case = TRUE)] <- "COASTAL FLOOD"
+marineswmatch <- c("MARINE MISHAP")
+rawdata$EVTYPE[grep(paste(marineswmatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "MARINE STRONG WIND"
+tornadomatch <- c("TORNADO", "TORNDAO")
+rawdata$EVTYPE[grep(paste(tornadomatch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "TORNADO"
+tidematch <- c("STORM SURGE", "^TIDAL")
+rawdata$EVTYPE[grep(paste(tidematch, collapse = "|"), rawdata$EVTYPE,
+    ignore.case = TRUE)] <- "STORM SURGE/TIDE"
 
 rawdata$EVTYPE <- droplevels(rawdata$EVTYPE)
 ```
